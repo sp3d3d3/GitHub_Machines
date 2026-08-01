@@ -5,19 +5,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
       - name: Updating & Cleaning ..
-        run: cd ; sudo apt clean &&  sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && sudo apt update
+        run: |
+          cd ~
+          sudo apt clean
+          sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+          sudo apt update
+
       - name: Changing the Password ..
-        run:  sudo  echo -e "1234\n1234" |sudo passwd runner ;  sudo hostnamectl set-hostname ammar0xff 
+        run: |
+          sudo bash -c 'echo -e "1234\n1234" | passwd runner' || true
+          sudo hostnamectl set-hostname ammar0xff || true
+
       - name: Beautifying The Terminal ..
-        run: cd; echo 'cd ; TERM=xterm ; rm -rf * .bashrc ; wget -q "https://raw.githubusercontent.com/ammar0xff/GitHub_Machines/main/.github/workflows/.bashrc" ; bash ; sudo touch ~/.sudo_as_admin_successful ; cd' > .bashrc 
-      - name: Installing Gotty Web Terminal ..
-        run:  sudo curl -sSL "https://github.com/yudai/gotty/releases/download/v1.0.1/gotty_linux_amd64.tar.gz" -o gotty.tar.gz ; sudo tar -xzvf gotty.tar.gz ; sudo rm gotty.tar.gz ; sudo mv gotty /usr/bin
-      - name: Running Gotty Web Terminal On Port 8080 ..
-        run: cd ; export TERM=xterm ; gotty -w /bin/bash &
-      - name: Installing Ngrok ..
-        run: sudo curl -sSL "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz" -o ngrok.tgz ; sudo tar -xzvf ngrok.tgz ; sudo rm ngrok.tgz ; sudo mv ngrok /usr/bin
-      - name: Configuring Ngrok Token ..
-        run: ngrok config add-authtoken ${{ secrets.NGROK_TOKEN }}
-      - name: Running Ngrok ..   
-        run: ngrok http --domain=${{secrets.NGROK_DOMAIN}} 8080
+        run: |
+          cd ~ || true
+          wget -q "https://raw.githubusercontent.com/ammar0xff/GitHub_Machines/main/.github/workflows/.bashrc" -O ~/.bashrc || true
+
+      - name: Installing cloudflared ..
+        run: |
+          set -e
+          cd /tmp
+          curl -L -o cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+          sudo mv cloudflared /usr/local/bin/cloudflared
+          sudo chmod +x /usr/local/bin/cloudflared
+          cloudflared --version || true
+
+      - name: Configuring Cloudflared Token ..
+        env:
+          CF_TUNNEL: ${{ secrets.CF_TUNNEL }}
+        run: |
+          echo "CF_TUNNEL=$CF_TUNNEL" >> $GITHUB_ENV
+
+      - name: Running Cloudflared Tunnel ..
+        env:
+          CF_TUNNEL: ${{ secrets.CF_TUNNEL }}
+        run: |
+          export CF_TUNNEL="$CF_TUNNEL"
+          cloudflared tunnel run --token "$CF_TUNNEL" 
