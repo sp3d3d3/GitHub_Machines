@@ -45,3 +45,16 @@ jobs:
         $exe = 'C:\Program Files\cloudflared\cloudflared.exe'
         # start cloudflared as a background process using the token
         Start-Process -FilePath $exe -ArgumentList "tunnel run --token $env:CF_TOKEN_WINDOWS" -NoNewWindow
+
+    - name: Keep Runner Alive
+      run: |
+        Write-Host "RDP Connection ready. Keeping VM alive..."
+        Start-Sleep -Seconds 21600 # Keeps VM active for 6 hours
+
+
+
+
+
+
+        
+  
