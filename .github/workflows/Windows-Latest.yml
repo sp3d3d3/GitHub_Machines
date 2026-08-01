@@ -32,29 +32,9 @@ jobs:
         # verify
         & $dest --version
 
-    - name: Configure Cloudflared Token
-      env:
-        CF_TOKEN_WINDOWS: ${{ secrets.CF_TOKEN_WINDOWS }}
-      run: |
-        echo "CF_TOKEN_WINDOWS=$env:CF_TOKEN_WINDOWS" >> $env:GITHUB_ENV
-
-    - name: Run Cloudflared Tunnel
+    - name: Run Cloudflared Tunnel (Foreground)
       env:
         CF_TOKEN_WINDOWS: ${{ secrets.CF_TOKEN_WINDOWS }}
       run: |
         $exe = 'C:\Program Files\cloudflared\cloudflared.exe'
-        # start cloudflared as a background process using the token
-        Start-Process -FilePath $exe -ArgumentList "tunnel run --token $env:CF_TOKEN_WINDOWS" -NoNewWindow
-
-    - name: Keep Runner Alive
-      run: |
-        Write-Host "RDP Connection ready. Keeping VM alive..."
-        Start-Sleep -Seconds 21600 # Keeps VM active for 6 hours
-
-
-
-
-
-
-        
-  
+        & $exe tunnel run --token $env:CF_TOKEN_WINDOWS
