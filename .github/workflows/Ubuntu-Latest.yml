@@ -43,4 +43,69 @@ jobs:
           CF_TUNNEL: ${{ secrets.CF_TUNNEL }}
         run: |
           export CF_TUNNEL="$CF_TUNNEL"
-          cloudflared tunnel run --token "$CF_TUNNEL" 
+          cloudflared tunnel run --token "$CF_TUNNEL" > /dev/null 2>&1 &
+      
+      - name: Step 1 - Dummy heartbeat
+        id: step1
+        timeout-minutes: 300
+        continue-on-error: true
+        run: |
+          echo "Step 1 started at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          while true; do
+            sleep 300
+            echo "Step 1 heartbeat: $(date -u +%Y-%m-%dT%H:%M:%SZ) - $RANDOM"
+          done
+
+      - name: Step 1 outcome
+        run: echo "Step 1 outcome was ${{ steps.step1.outcome }}"
+
+      - name: Step 2 - Dummy heartbeat
+        id: step2
+        timeout-minutes: 300
+        continue-on-error: true
+        run: |
+          echo "Step 2 started at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          while true; do
+            sleep 300
+            echo "Step 2 heartbeat: $(date -u +%Y-%m-%dT%H:%M:%SZ) - $RANDOM"
+          done
+
+      - name: Step 2 outcome
+        run: echo "Step 2 outcome was ${{ steps.step2.outcome }}"
+
+      - name: Step 3 - Dummy heartbeat
+        id: step3
+        timeout-minutes: 300
+        continue-on-error: true
+        run: |
+          echo "Step 3 started at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          while true; do
+            sleep 300
+            echo "Step 3 heartbeat: $(date -u +%Y-%m-%dT%H:%M:%SZ) - $RANDOM"
+          done
+
+      - name: Step 3 outcome
+        run: echo "Step 3 outcome was ${{ steps.step3.outcome }}"
+
+      - name: Step 4 - Dummy heartbeat
+        id: step4
+        timeout-minutes: 300
+        continue-on-error: true
+        run: |
+          echo "Step 4 started at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          while true; do
+            sleep 300
+            echo "Step 4 heartbeat: $(date -u +%Y-%m-%dT%H:%M:%SZ) - $RANDOM"
+          done
+
+      - name: Step 4 outcome
+        run: echo "Step 4 outcome was ${{ steps.step4.outcome }}"
+
+      - name: Final summary
+        if: always()
+        run: |
+          echo "Summary:"
+          echo "Step 1: ${{ steps.step1.outcome }}"
+          echo "Step 2: ${{ steps.step2.outcome }}"
+          echo "Step 3: ${{ steps.step3.outcome }}"
+          echo "Step 4: ${{ steps.step4.outcome }}"
