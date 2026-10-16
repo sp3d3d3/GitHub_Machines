@@ -1,0 +1,84 @@
+name: Ubuntu
+on: workflow_dispatch
+
+permissions:
+  contents: read
+  actions: write   # needed so the job can re-trigger itself
+
+jobs:
+  system:
+    runs-on: ubuntu-24.04-arm   # free ARM runner (public repos)
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update & clean
+        run: |
+          sudo apt clean
+          sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+          sudo apt update
+
+      - name: Set password & hostname
+        env:
+          RUNNER_PASSWORD: ${{ secrets.RUNNER_PASSWORD }}
+        run: |
+          echo "runner:${RUNNER_PASSWORD}" | sudo chpasswd
+          sudo hostnamectl set-hostname ammar0xff || true
+
+      - name: Beautify terminal
+        run: |
+          wget -q "https://raw.githubusercontent.com/ammar0xff/GitHub_Machines/main/.github/workflows/.bashrc" -O ~/.bashrc || true
+
+      - name: Install cloudflared (arm64)
+        run: |
+          curl -fL -o /tmp/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64
+          sudo install -m 755 /tmp/cloudflared /usr/local/bin/cloudflared
+          cloudflared --version
+
+      - name: Watchdog (keeps machine alive)
+        env:
+          CF_TUNNEL: ${{ secrets.CF_TUNNEL }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          start_cf() {
+            setsid nohup cloudflared tunnel run --token "$CF_TUNNEL" >/tmp/cf.log 2>&1 &
+          }
+          start_cf
+
+          START=$(date +%s)
+          HANDOFF=$((5*3600 + 30*60))   # start next run at 5h30
+          END=$((5*3600 + 40*60))       # exit at 5h40m
+          handed_off=false
+          tick=0
+
+          while true; do
+            NOW=$(( $(date +%s) - START ))
+
+            # 1. Restart tunnel if it died
+            if ! pgrep -x cloudflared >/dev/null; then
+              echo "$(date -u +%T) cloudflared down, restarting"
+              tail -n 5 /tmp/cf.log
+              start_cf
+            fi
+
+            # 2. Health log every 5 min
+            if (( tick % 5 == 0 )); then
+              echo "[$(date -u +%T)] up=$((NOW/60))m load=$(cut -d' ' -f1-3 /proc/loadavg) mem=$(free -m | awk '/Mem/{print $3"/"$2"MB"}') disk=$(df -h / | awk 'NR==2{print $5}')"
+            fi
+
+            # 3. Hand off to a fresh run before the 6h limit
+            if ! $handed_off && (( NOW >= HANDOFF )); then
+              echo "Triggering next run"
+              gh workflow run "${{ github.workflow }}" --repo "${{ github.repository }}" --ref "${{ github.ref_name }}" && handed_off=true
+            fi
+
+            (( NOW >= END )) && break
+            tick=$((tick+1))
+            sleep 60
+          done
+
+      - name: Final summary
+        if: always()
+        run: |
+          echo "Job finished at $(date -u)"
+          tail -n 20 /tmp/cf.log || true
